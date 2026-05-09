@@ -135,6 +135,21 @@ canvas {
   cursor: default;
 }
 
+/* ===== Fullscreen canvas container ===== */
+.canvas-wrap:fullscreen,
+.canvas-wrap:-webkit-full-screen {
+  background: #030308;
+  border-radius: 0 !important;
+  border: none !important;
+  width: 100vw !important;
+  height: 100vh !important;
+}
+.canvas-wrap:fullscreen canvas,
+.canvas-wrap:-webkit-full-screen canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
 /* ===== Selection ===== */
 ::selection {
   background: rgba(0, 255, 255, 0.3);

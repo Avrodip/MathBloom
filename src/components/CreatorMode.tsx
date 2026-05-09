@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sliders, Code2, Play, AlertCircle, ChevronDown } from "lucide-react";
 import { EquationConfig, makeCustomPolarEquation, CurveId } from "@/lib/equations";
 import { Theme } from "@/lib/themes";
-import { hexToRgb } from "@/lib/utils";
+import { hexToRgb, debounce } from "@/lib/utils";
 
 // Parameter slider definitions per curve
 const SLIDER_CONFIGS: Partial<Record<CurveId, { key: string; label: string; min: number; max: number; step: number }[]>> = {
@@ -61,6 +61,15 @@ export default function CreatorMode({
 
   const rgb = hexToRgb(theme.colors.primary) ?? { r: 0, g: 255, b: 255 };
   const sliders = equation ? (SLIDER_CONFIGS[equation.id] ?? []) : [];
+
+  // Debounce param changes so rapid slider drags don't thrash recompute
+  const debouncedParamChange = useRef(
+    debounce((key: string, value: number) => onParamChange(key, value), 60)
+  ).current;
+
+  const handleSlider = useCallback((key: string, value: number) => {
+    debouncedParamChange(key, value);
+  }, [debouncedParamChange]);
 
   const handleCustomRender = () => {
     setFormulaError("");
@@ -161,7 +170,7 @@ export default function CreatorMode({
                                 max={s.max}
                                 step={s.step}
                                 value={val}
-                                onChange={(e) => onParamChange(s.key, parseFloat(e.target.value))}
+                                onChange={(e) => handleSlider(s.key, parseFloat(e.target.value))}
                                 className="w-full h-1 rounded-full appearance-none cursor-pointer"
                                 style={{
                                   background: `linear-gradient(to right, ${theme.colors.primary} 0%, ${theme.colors.primary} ${((val - s.min) / (s.max - s.min)) * 100}%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.15) ${((val - s.min) / (s.max - s.min)) * 100}%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.15) 100%)`,

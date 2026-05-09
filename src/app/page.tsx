@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Github } from "lucide-react";
+import { Sparkles, Github, Maximize2, Minimize2 } from "lucide-react";
 
 import Hero from "@/components/Hero";
 import ControlPanel from "@/components/ControlPanel";
@@ -51,6 +51,8 @@ export default function MathBloomApp() {
 
   const canvasRef = useRef<GraphCanvasHandle>(null);
   const appSectionRef = useRef<HTMLDivElement>(null);
+  const canvasWrapRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const rgb = hexToRgb(theme.colors.primary) ?? { r: 0, g: 255, b: 255 };
 
@@ -108,6 +110,20 @@ export default function MathBloomApp() {
     setIsAnimating(true);
     setAnimationComplete(false);
     canvasRef.current?.restartAnimation();
+  }, []);
+
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      canvasWrapRef.current?.requestFullscreen();
+    } else {
+      document.exitFullscreen();
+    }
+  }, []);
+
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
   }, []);
 
   // Load rose on entry
@@ -227,10 +243,11 @@ export default function MathBloomApp() {
 
               {/* Canvas */}
               <motion.div
+                ref={canvasWrapRef}
                 initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.1 }}
-                className="relative rounded-2xl overflow-hidden border"
+                className="canvas-wrap relative rounded-2xl overflow-hidden border"
                 style={{
                   height: "clamp(380px, 58vh, 680px)",
                   borderColor: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.12)`,
@@ -250,6 +267,23 @@ export default function MathBloomApp() {
                     style={{ borderColor: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.35)` }}
                   />
                 ))}
+
+                {/* Fullscreen toggle button */}
+                <motion.button
+                  onClick={toggleFullscreen}
+                  whileHover={{ scale: 1.08 }}
+                  whileTap={{ scale: 0.92 }}
+                  className="absolute top-3 left-3 z-20 p-2 rounded-lg border transition-all"
+                  style={{
+                    background: "rgba(0,0,0,0.55)",
+                    backdropFilter: "blur(8px)",
+                    borderColor: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.2)`,
+                    color: theme.colors.primary,
+                  }}
+                  title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+                >
+                  {isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+                </motion.button>
 
                 <GraphCanvas
                   ref={canvasRef}

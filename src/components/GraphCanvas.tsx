@@ -52,46 +52,31 @@ const GraphCanvas = forwardRef<GraphCanvasHandle, GraphCanvasProps>(
         if (points.length < 2) return;
         const rgb = hexToRgb(color) ?? { r: 0, g: 255, b: 255 };
 
-        // Outer glow
+        // Build path once, reuse for both passes
+        const path = new Path2D();
+        path.moveTo(points[0][0], points[0][1]);
+        for (let i = 1; i < points.length; i++) path.lineTo(points[i][0], points[i][1]);
+
+        // Glow pass
         ctx.save();
-        ctx.shadowBlur = 28;
-        ctx.shadowColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.5)`;
-        ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.18)`;
-        ctx.lineWidth = 10;
+        ctx.shadowBlur = 22;
+        ctx.shadowColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.7)`;
+        ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.22)`;
+        ctx.lineWidth = 8;
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
-        ctx.beginPath();
-        ctx.moveTo(points[0][0], points[0][1]);
-        for (let i = 1; i < points.length; i++) ctx.lineTo(points[i][0], points[i][1]);
-        ctx.stroke();
+        ctx.stroke(path);
         ctx.restore();
 
-        // Mid glow
+        // Core pass
         ctx.save();
-        ctx.shadowBlur = 12;
-        ctx.shadowColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.9)`;
-        ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.4)`;
-        ctx.lineWidth = 4;
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
-        ctx.beginPath();
-        ctx.moveTo(points[0][0], points[0][1]);
-        for (let i = 1; i < points.length; i++) ctx.lineTo(points[i][0], points[i][1]);
-        ctx.stroke();
-        ctx.restore();
-
-        // Core
-        ctx.save();
-        ctx.shadowBlur = 4;
+        ctx.shadowBlur = 6;
         ctx.shadowColor = color;
         ctx.strokeStyle = color;
         ctx.lineWidth = 1.8;
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
-        ctx.beginPath();
-        ctx.moveTo(points[0][0], points[0][1]);
-        for (let i = 1; i < points.length; i++) ctx.lineTo(points[i][0], points[i][1]);
-        ctx.stroke();
+        ctx.stroke(path);
         ctx.restore();
       },
       []
