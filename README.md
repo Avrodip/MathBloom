@@ -4,6 +4,8 @@
 
 ![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js) ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript) ![Tailwind CSS](https://img.shields.io/badge/Tailwind-3-38bdf8?logo=tailwindcss) ![Framer Motion](https://img.shields.io/badge/Framer_Motion-11-pink)
 
+**🚀 Live Demo → [mathbloom-dev.netlify.app](https://mathbloom-dev.netlify.app/)**
+
 ---
 
 ## Features
