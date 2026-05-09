@@ -20,11 +20,12 @@ interface GraphCanvasProps {
   equation: EquationConfig | null;
   theme: Theme;
   isAnimating: boolean;
+  overrideParams?: Record<string, number>;
   onAnimationComplete?: () => void;
 }
 
 const GraphCanvas = forwardRef<GraphCanvasHandle, GraphCanvasProps>(
-  function GraphCanvas({ equation, theme, isAnimating, onAnimationComplete }, ref) {
+  function GraphCanvas({ equation, theme, isAnimating, overrideParams, onAnimationComplete }, ref) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const animFrameRef = useRef<number>(0);
     const progressRef = useRef<number>(0);
@@ -32,67 +33,64 @@ const GraphCanvas = forwardRef<GraphCanvasHandle, GraphCanvasProps>(
     const waveOffsetRef = useRef<number>(0);
     const equationRef = useRef(equation);
     const themeRef = useRef(theme);
+    const overrideRef = useRef(overrideParams);
     const completedRef = useRef(false);
+    // Store CSS display dimensions (not canvas.width which is physical pixels * dpr)
+    const displayRef = useRef({ w: 0, h: 0 });
 
     useEffect(() => { equationRef.current = equation; }, [equation]);
     useEffect(() => { themeRef.current = theme; }, [theme]);
+    useEffect(() => { overrideRef.current = overrideParams; }, [overrideParams]);
+
+    const getMergedParams = useCallback((config: EquationConfig) => ({
+      ...config.params,
+      ...(overrideRef.current ?? {}),
+    }), []);
 
     const drawGlowLine = useCallback(
-      (
-        ctx: CanvasRenderingContext2D,
-        points: [number, number][],
-        color: string,
-        glowColor: string,
-        lineWidth: number = 2
-      ) => {
+      (ctx: CanvasRenderingContext2D, points: [number, number][], color: string) => {
         if (points.length < 2) return;
-        const rgb = hexToRgb(glowColor) ?? { r: 0, g: 255, b: 255 };
+        const rgb = hexToRgb(color) ?? { r: 0, g: 255, b: 255 };
 
-        // Outer glow pass
+        // Outer glow
         ctx.save();
-        ctx.shadowBlur = 30;
-        ctx.shadowColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.6)`;
-        ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.25)`;
-        ctx.lineWidth = lineWidth + 8;
+        ctx.shadowBlur = 28;
+        ctx.shadowColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.5)`;
+        ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.18)`;
+        ctx.lineWidth = 10;
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
         ctx.beginPath();
         ctx.moveTo(points[0][0], points[0][1]);
-        for (let i = 1; i < points.length; i++) {
-          ctx.lineTo(points[i][0], points[i][1]);
-        }
+        for (let i = 1; i < points.length; i++) ctx.lineTo(points[i][0], points[i][1]);
         ctx.stroke();
         ctx.restore();
 
-        // Middle glow pass
+        // Mid glow
         ctx.save();
-        ctx.shadowBlur = 16;
-        ctx.shadowColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.8)`;
-        ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.5)`;
-        ctx.lineWidth = lineWidth + 3;
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.9)`;
+        ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.4)`;
+        ctx.lineWidth = 4;
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
         ctx.beginPath();
         ctx.moveTo(points[0][0], points[0][1]);
-        for (let i = 1; i < points.length; i++) {
-          ctx.lineTo(points[i][0], points[i][1]);
-        }
+        for (let i = 1; i < points.length; i++) ctx.lineTo(points[i][0], points[i][1]);
         ctx.stroke();
         ctx.restore();
 
-        // Core line
+        // Core
         ctx.save();
-        ctx.shadowBlur = 6;
+        ctx.shadowBlur = 4;
         ctx.shadowColor = color;
         ctx.strokeStyle = color;
-        ctx.lineWidth = lineWidth;
+        ctx.lineWidth = 1.8;
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
         ctx.beginPath();
         ctx.moveTo(points[0][0], points[0][1]);
-        for (let i = 1; i < points.length; i++) {
-          ctx.lineTo(points[i][0], points[i][1]);
-        }
+        for (let i = 1; i < points.length; i++) ctx.lineTo(points[i][0], points[i][1]);
         ctx.stroke();
         ctx.restore();
       },
@@ -105,30 +103,17 @@ const GraphCanvas = forwardRef<GraphCanvasHandle, GraphCanvasProps>(
         ctx.save();
         ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.04)`;
         ctx.lineWidth = 1;
-        const spacing = 40;
-        for (let x = 0; x < w; x += spacing) {
-          ctx.beginPath();
-          ctx.moveTo(x, 0);
-          ctx.lineTo(x, h);
-          ctx.stroke();
+        const sp = 50;
+        for (let x = 0; x < w; x += sp) {
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
         }
-        for (let y = 0; y < h; y += spacing) {
-          ctx.beginPath();
-          ctx.moveTo(0, y);
-          ctx.lineTo(w, y);
-          ctx.stroke();
+        for (let y = 0; y < h; y += sp) {
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
         }
-        // Axes
-        ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.12)`;
+        ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)`;
         ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(w / 2, 0);
-        ctx.lineTo(w / 2, h);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(0, h / 2);
-        ctx.lineTo(w, h / 2);
-        ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(w / 2, 0); ctx.lineTo(w / 2, h); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, h / 2); ctx.lineTo(w, h / 2); ctx.stroke();
         ctx.restore();
       },
       []
@@ -140,100 +125,95 @@ const GraphCanvas = forwardRef<GraphCanvasHandle, GraphCanvasProps>(
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
 
-      const w = canvas.width;
-      const h = canvas.height;
+      // ✅ Use CSS display size (not canvas.width which is physical pixels)
+      const w = displayRef.current.w || canvas.clientWidth;
+      const h = displayRef.current.h || canvas.clientHeight;
+      if (!w || !h) return;
+
       const eq = equationRef.current;
       const t = themeRef.current;
-
-      // Clear with dark background
-      ctx.clearRect(0, 0, w, h);
       const bgRgb = hexToRgb(t.colors.canvasBg) ?? { r: 3, g: 3, b: 8 };
+      const primaryRgb = hexToRgb(t.colors.primary) ?? { r: 0, g: 255, b: 255 };
+
+      ctx.clearRect(0, 0, w, h);
       ctx.fillStyle = `rgb(${bgRgb.r}, ${bgRgb.g}, ${bgRgb.b})`;
       ctx.fillRect(0, 0, w, h);
 
-      // Radial glow center
-      const gradient = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.min(w, h) * 0.5);
-      const primaryRgb = hexToRgb(t.colors.primary) ?? { r: 0, g: 255, b: 255 };
-      gradient.addColorStop(0, `rgba(${primaryRgb.r}, ${primaryRgb.g}, ${primaryRgb.b}, 0.06)`);
-      gradient.addColorStop(1, "transparent");
-      ctx.fillStyle = gradient;
+      // Radial center glow
+      const grad = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.min(w, h) * 0.45);
+      grad.addColorStop(0, `rgba(${primaryRgb.r}, ${primaryRgb.g}, ${primaryRgb.b}, 0.05)`);
+      grad.addColorStop(1, "transparent");
+      ctx.fillStyle = grad;
       ctx.fillRect(0, 0, w, h);
 
       drawGrid(ctx, w, h, t.colors.primary);
 
       if (!eq) {
-        // Idle placeholder
         ctx.save();
-        ctx.font = "bold 18px 'JetBrains Mono', monospace";
-        ctx.fillStyle = `rgba(${primaryRgb.r}, ${primaryRgb.g}, ${primaryRgb.b}, 0.3)`;
+        ctx.font = "bold 16px var(--font-jetbrains, monospace)";
+        ctx.fillStyle = `rgba(${primaryRgb.r}, ${primaryRgb.g}, ${primaryRgb.b}, 0.25)`;
         ctx.textAlign = "center";
         ctx.fillText("Type a keyword to begin...", w / 2, h / 2 - 10);
-        ctx.font = "14px 'JetBrains Mono', monospace";
-        ctx.fillStyle = `rgba(${primaryRgb.r}, ${primaryRgb.g}, ${primaryRgb.b}, 0.15)`;
-        ctx.fillText("rose · heart · spiral · galaxy · wave", w / 2, h / 2 + 20);
+        ctx.font = "13px var(--font-jetbrains, monospace)";
+        ctx.fillStyle = `rgba(${primaryRgb.r}, ${primaryRgb.g}, ${primaryRgb.b}, 0.12)`;
+        ctx.fillText("rose · heart · spiral · galaxy · wave", w / 2, h / 2 + 18);
         ctx.restore();
         return;
       }
 
+      const mergedParams = getMergedParams(eq);
+
       if (eq.renderType === "cartesian") {
-        // Animated sine wave — runs continuously
-        waveOffsetRef.current += 0.03;
-        const wavePoints: [number, number][] = [];
+        waveOffsetRef.current += 0.025;
+        const off = waveOffsetRef.current;
+        const { A, B, C } = mergedParams;
         const cx = w / 2;
         const cy = h / 2;
-        const { A, B, C } = eq.params;
-        for (let px = 0; px <= w; px += 2) {
-          const x = px - cx;
-          const y = A * Math.sin(B * x + C * waveOffsetRef.current);
-          wavePoints.push([px, cy + y]);
-        }
-        // Harmonic overlay
+
+        const wave1: [number, number][] = [];
         const wave2: [number, number][] = [];
         for (let px = 0; px <= w; px += 2) {
           const x = px - cx;
-          const y = (A * 0.4) * Math.sin(B * 2.1 * x + C * waveOffsetRef.current * 1.3 + 1);
-          wave2.push([px, cy + y]);
+          wave1.push([px, cy + A * Math.sin(B * x + C * off)]);
+          wave2.push([px, cy + A * 0.45 * Math.sin(B * 2.3 * x + C * off * 1.4 + 1)]);
         }
-        const secondRgb = hexToRgb(eq.color) ?? { r: 0, g: 255, b: 136 };
-        drawGlowLine(ctx, wave2, `rgba(${secondRgb.r}, ${secondRgb.g}, ${secondRgb.b}, 0.5)`, eq.color, 1.5);
-        drawGlowLine(ctx, wavePoints, eq.color, eq.color, 2.5);
+        const rgb2 = hexToRgb(eq.color) ?? { r: 0, g: 255, b: 136 };
+        ctx.save();
+        ctx.globalAlpha = 0.45;
+        ctx.restore();
+        drawGlowLine(ctx, wave2, `rgba(${rgb2.r}, ${rgb2.g}, ${rgb2.b}, 0.5)`);
+        drawGlowLine(ctx, wave1, eq.color);
       } else {
-        // Progressive drawing for polar/parametric
-        const SPEED = 6;
+        const SPEED = 5;
         if (isAnimating && progressRef.current < pointsRef.current.length) {
-          progressRef.current = Math.min(
-            progressRef.current + SPEED,
-            pointsRef.current.length
-          );
+          progressRef.current = Math.min(progressRef.current + SPEED, pointsRef.current.length);
         }
 
-        if (progressRef.current >= pointsRef.current.length && !completedRef.current) {
+        if (progressRef.current >= pointsRef.current.length && !completedRef.current && pointsRef.current.length > 0) {
           completedRef.current = true;
           onAnimationComplete?.();
         }
 
         const visible = pointsRef.current.slice(0, Math.floor(progressRef.current));
-        if (visible.length > 1) {
-          drawGlowLine(ctx, visible, eq.color, eq.color, 2);
-        }
+        if (visible.length > 1) drawGlowLine(ctx, visible, eq.color);
 
-        // Draw trailing dot at front
+        // Leading dot
         if (visible.length > 0 && progressRef.current < pointsRef.current.length) {
           const [tx, ty] = visible[visible.length - 1];
           const dotRgb = hexToRgb(eq.color) ?? { r: 255, g: 255, b: 255 };
           ctx.save();
-          ctx.shadowBlur = 20;
+          ctx.shadowBlur = 18;
           ctx.shadowColor = eq.color;
-          ctx.fillStyle = `rgba(${dotRgb.r}, ${dotRgb.g}, ${dotRgb.b}, 0.9)`;
+          ctx.fillStyle = `rgb(${dotRgb.r}, ${dotRgb.g}, ${dotRgb.b})`;
           ctx.beginPath();
-          ctx.arc(tx, ty, 4, 0, Math.PI * 2);
+          ctx.arc(tx, ty, 3.5, 0, Math.PI * 2);
           ctx.fill();
           ctx.restore();
         }
       }
-    }, [drawGlowLine, drawGrid, isAnimating, onAnimationComplete]);
+    }, [drawGlowLine, drawGrid, isAnimating, getMergedParams, onAnimationComplete]);
 
-    // Recompute points when equation changes
+    // Recompute points when equation or override params change
     useEffect(() => {
       const canvas = canvasRef.current;
       if (!canvas || !equation) {
@@ -244,28 +224,25 @@ const GraphCanvas = forwardRef<GraphCanvasHandle, GraphCanvasProps>(
       progressRef.current = 0;
       completedRef.current = false;
       if (equation.renderType !== "cartesian") {
-        pointsRef.current = computePoints(equation, canvas.width, canvas.height);
+        const { w, h } = displayRef.current;
+        const mergedConfig = { ...equation, params: { ...equation.params, ...(overrideParams ?? {}) } };
+        pointsRef.current = computePoints(mergedConfig, w || canvas.clientWidth, h || canvas.clientHeight);
       }
-    }, [equation]);
+    }, [equation, overrideParams]);
 
     // Animation loop
     useEffect(() => {
-      let running = true;
-
+      let active = true;
       const loop = () => {
-        if (!running) return;
+        if (!active || document.hidden) { animFrameRef.current = requestAnimationFrame(loop); return; }
         renderFrame();
         animFrameRef.current = requestAnimationFrame(loop);
       };
-
       animFrameRef.current = requestAnimationFrame(loop);
-      return () => {
-        running = false;
-        cancelAnimationFrame(animFrameRef.current);
-      };
+      return () => { active = false; cancelAnimationFrame(animFrameRef.current); };
     }, [renderFrame]);
 
-    // Resize handler
+    // Resize — uses setTransform to avoid DPR accumulation
     useEffect(() => {
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -273,18 +250,21 @@ const GraphCanvas = forwardRef<GraphCanvasHandle, GraphCanvasProps>(
       const resize = () => {
         const parent = canvas.parentElement;
         if (!parent) return;
-        const dpr = window.devicePixelRatio ?? 1;
+        const dpr = Math.min(window.devicePixelRatio ?? 1, 2); // Cap at 2x for perf
         const w = parent.clientWidth;
         const h = parent.clientHeight;
+        displayRef.current = { w, h }; // Store CSS display dimensions
         canvas.width = w * dpr;
         canvas.height = h * dpr;
         canvas.style.width = `${w}px`;
         canvas.style.height = `${h}px`;
+        // ✅ setTransform (not scale) prevents accumulation across resizes
         const ctx = canvas.getContext("2d");
-        if (ctx) ctx.scale(dpr, dpr);
-        // Recompute points after resize
+        if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        // Recompute with CSS pixel dimensions
         if (equationRef.current && equationRef.current.renderType !== "cartesian") {
-          pointsRef.current = computePoints(equationRef.current, w, h);
+          const merged = { ...equationRef.current, params: { ...equationRef.current.params, ...(overrideRef.current ?? {}) } };
+          pointsRef.current = computePoints(merged, w, h);
         }
       };
 
@@ -292,7 +272,7 @@ const GraphCanvas = forwardRef<GraphCanvasHandle, GraphCanvasProps>(
       const ro = new ResizeObserver(resize);
       ro.observe(canvas.parentElement!);
       return () => ro.disconnect();
-    }, []);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     useImperativeHandle(ref, () => ({
       exportPNG() {
@@ -310,13 +290,7 @@ const GraphCanvas = forwardRef<GraphCanvasHandle, GraphCanvasProps>(
       },
     }));
 
-    return (
-      <canvas
-        ref={canvasRef}
-        className="w-full h-full block"
-        style={{ display: "block" }}
-      />
-    );
+    return <canvas ref={canvasRef} className="w-full h-full block" />;
   }
 );
 

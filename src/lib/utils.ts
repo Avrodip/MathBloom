@@ -60,19 +60,19 @@ export function getCurveStats(id: CurveId): {
   type: string;
   domain: string;
 } {
-  const stats: Record<
-    CurveId,
-    { complexity: string; type: string; domain: string }
-  > = {
+  const stats: Partial<Record<CurveId, { complexity: string; type: string; domain: string }>> = {
     rose: { complexity: "Low", type: "Polar", domain: "0 → 2π" },
     heart: { complexity: "Medium", type: "Parametric", domain: "0 → 2π" },
     butterfly: { complexity: "High", type: "Polar", domain: "0 → 12π" },
     spiral: { complexity: "Low", type: "Polar", domain: "0 → 8π" },
     galaxy: { complexity: "Medium", type: "Polar", domain: "0 → 5π" },
-    wave: { complexity: "Low", type: "Cartesian", domain: "−π → π" },
+    wave: { complexity: "Low", type: "Cartesian", domain: "−∞ → ∞" },
     lissajous: { complexity: "Medium", type: "Parametric", domain: "0 → 2π" },
+    astroid: { complexity: "Low", type: "Parametric", domain: "0 → 2π" },
+    spirograph: { complexity: "Medium", type: "Parametric", domain: "0 → 14π" },
+    custom: { complexity: "Custom", type: "Polar", domain: "0 → 4π" },
   };
-  return stats[id];
+  return stats[id] ?? { complexity: "—", type: "—", domain: "—" };
 }
 
 export function formatEquationForDisplay(config: EquationConfig): string {
